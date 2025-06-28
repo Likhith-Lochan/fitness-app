@@ -1,0 +1,119 @@
+version: "3.8"
+
+services:
+  user-service:
+    build:
+      context: ./userservice
+    container_name: user-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      - eureka-server
+      - postgres
+      - config-server
+
+  activity-service:
+    build:
+      context: ./activityservice
+    container_name: activity-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - eureka-server
+      - mongodb
+      - rabbitmq
+      - config-server
+
+  ai-service:
+    build:
+      context: ./aiservice
+    container_name: ai-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - eureka-server
+      - mongodb
+      - rabbitmq
+      - config-server
+
+  config-server:
+    build:
+      context: ./configserver
+    container_name: config-server
+    ports:
+      - "8888:8888"
+
+  api-gateway:
+    build:
+      context: ./gateway
+    container_name: gateway-service
+    ports:
+      - "9090:9090"
+    depends_on:
+      - eureka-server
+      - keycloak
+      - config-server
+
+  eureka-server:
+    build:
+      context: ./server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:data/db
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: root
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"  #messaging
+      - "15672:15672" #management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1
+    container_name: keycloak
+    ports:
+      - "8181:8080"
+    environment:
+      KC_DB: dev-file
+      KC_HOSTNAME_STRICT: false
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: ["start-dev"]
+
+  frontend:
+    build:
+      context: ./fitness-app-frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+      - keycloak
+
+volumes:
+  mongo_data:
+  postgres_data:
